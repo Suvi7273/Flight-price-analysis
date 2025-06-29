@@ -35,65 +35,61 @@ def get_user_input():
     else:
         return filtered_flights, source_city, destination_city, travel_class
 
-def convert_duration_to_minutes(duration_str):
-    if isinstance(duration_str, str):
+def convert_duration_to_minutes(duration):
+    if isinstance(duration, str):
         hours, minutes = 0, 0
-        if 'h' in duration_str:
-            hours = int(duration_str.split('h')[0].strip())
-            if 'm' in duration_str:
-                minutes = int(duration_str.split('h')[1].split('m')[0].strip())
-        elif 'm' in duration_str:
-            minutes = int(duration_str.split('m')[0].strip())
+        if 'h' in duration:
+            hours = int(duration.split('h')[0].strip())
+            if 'm' in duration:
+                minutes = int(duration.split('h')[1].split('m')[0].strip())
+        elif 'm' in duration:
+            minutes = int(duration.split('m')[0].strip())
         return hours * 60 + minutes
-    return duration_str
+
+    elif isinstance(duration, (float, int)):
+        return int(duration * 60)
+
+    return None
 
 def plot_graphs(filtered_flights, source_city, destination_city):
-    if isinstance(filtered_flights['duration'].iloc[0], str) and ('h' in filtered_flights['duration'].iloc[0] or 'm' in filtered_flights['duration'].iloc[0]):
-        filtered_flights['duration_minutes'] = filtered_flights['duration'].apply(convert_duration_to_minutes)
-        duration_column = 'duration_minutes'
-    else:
-        duration_column = 'duration'
+    filtered_flights['duration_minutes'] = filtered_flights['duration'].apply(convert_duration_to_minutes)
+    duration_column = 'duration_minutes'
     
     with st.expander("Source City & Destination City"):
         st.subheader("Price Distribution for the Selected Route")
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.histplot(filtered_flights['price'], kde=True, ax=ax)
-        ax.set_title(f'Price Distribution: {source_city} ➔ {destination_city}')
+        ax.set_title(f'Price Distribution: {source_city} -> {destination_city}')
         st.pyplot(fig)
         
         st.subheader("Average Price by Airline for the Route")
         fig, ax = plt.subplots(figsize=(12, 6))
         order = filtered_flights.groupby('airline')['price'].mean().sort_values(ascending=False).index
         sns.barplot(x='airline', y='price', data=filtered_flights, ax=ax, order=order)
-        ax.set_title(f'Average Price by Airline: {source_city} ➔ {destination_city}')
+        ax.set_title(f'Average Price by Airline: {source_city} -> {destination_city}')
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         st.pyplot(fig)
     
-    time_order = ['Morning', 'Afternoon', 'Evening', 'Night']
-    time_order = [t for t in time_order if t in filtered_flights['departure_time'].unique()]
-    
     with st.expander("Class (Economy/Business)"):
-        st.subheader("Price Difference Between Economy and Business Class")
+        st.subheader("Price range")
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.boxplot(x='class', y='price', data=filtered_flights, ax=ax)
-        ax.set_title(f'Price by Class: {source_city} ➔ {destination_city}')
+        ax.set_title(f'Price by Class: {source_city} -> {destination_city}')
         st.pyplot(fig)
     
     with st.expander("Number of Stops"):
         st.subheader("Impact of Stops on Price")
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.boxplot(x='stops', y='price', data=filtered_flights, ax=ax)
-        ax.set_title(f'Price by Number of Stops: {source_city} ➔ {destination_city}')
+        ax.set_title(f'Price by Number of Stops: {source_city} -> {destination_city}')
         st.pyplot(fig)
     
     with st.expander("Duration"):
         st.subheader("Duration vs. Price Relationship")
         fig, ax = plt.subplots(figsize=(12, 6))
         sns.scatterplot(x=duration_column, y='price', hue='airline', data=filtered_flights, ax=ax)
-        if duration_column == 'duration_minutes':
-            ax.set_xlabel('Duration (minutes)')
-        ax.set_title(f'Price vs Duration by Airline: {source_city} ➔ {destination_city}')
+        ax.set_title(f'Price vs Duration by Airline: {source_city} -> {destination_city}')
         plt.legend(title="Airline", bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
         st.pyplot(fig)
@@ -109,7 +105,7 @@ def predict_price(flight_data):
             input_vector[encoded_col] = 1
     
     predicted_price = model.predict(input_vector)[0]
-    return round(predicted_price, 2)
+    return predicted_price
 
 def main():
     st.title("Flight Price Analysis & Prediction Dashboard")
@@ -129,7 +125,7 @@ def main():
         }
         
         predicted_price = predict_price(flight_features)
-        st.success(f"Predicted Price: ${predicted_price}")
+        st.success(f"Predicted Price: Rs. {predicted_price:.2f}")
 
 if __name__ == "__main__":
     main()
